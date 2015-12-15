@@ -126,14 +126,6 @@ function check_environment() {
         plugin_error("whois is not installed in your system.");
     }
 }
-function check_tld($domain){
-    $array = array_reverse(explode(".",$domain));
-    if($array[0]==="jp"){
-        return TRUE;
-    }else{
-        return FALSE;
-    }
-}
 function whois_jprs_jp($domain,$whois_server){
         $ret = "";
         $cmd = 'whois '.$domain.'/e '. $whois_server .' | grep -i \'State\'';
