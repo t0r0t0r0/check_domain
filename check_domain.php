@@ -146,7 +146,7 @@ function whois_jprs_jp($domain,$whois_server){
         $status=str_replace(" ","", $statusarray[0]);
         $expire=str_replace("/","-",str_replace(")","",str_replace("(","",$statusarray[1])));
 
-        $date = trim($expire."T00:00:00Z");
+        $date = trim($expire);
         $ret = format_dates($date,$format='mdy');
         return $ret;
 }
@@ -160,7 +160,7 @@ function whois_ripn_net($domain,$whois_server){
         $outputarray=explode(":",$execout[0]);
         $expire=str_replace(".","-",str_replace(")","",str_replace("(","",str_replace(" ","", $outputarray[1]))));
 
-        $date = trim($expire."T00:00:00Z");
+        $date = trim($expire);
         $ret = format_dates($date,$format='mdy');
         return $ret;
 }
