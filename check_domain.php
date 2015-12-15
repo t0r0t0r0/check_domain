@@ -12,7 +12,7 @@ define("STATUS_OK", 0);
 define("STATUS_WARNING",  1);
 define("STATUS_CRITICAL", 2);
 define("STATUS_UNKNOWN", 3);
-define("DEBUG", true);
+define("DEBUG", false);
 define("VAL_WARNING",  60);
 define("VAL_CRITICAL", 30);
 
@@ -90,7 +90,11 @@ function parse_specs($specs) {
 
 function debug_logging($message) {
     if(DEBUG) {
-        echo $message;
+        if(is_array($message)){
+                var_dump($message);
+        }else{
+                echo $message."\n";
+        }
     }
 }
 
@@ -126,17 +130,24 @@ function check_environment() {
         plugin_error("whois is not installed in your system.");
     }
 }
-function whois_jprs_jp($domain,$whois_server){
-        $ret = "";
-        $cmd = 'whois '.$domain.'/e '. $whois_server .' | grep -i \'State\'';
-        exec($cmd, $execout, $exitcode);
+function check_execwhois($exitcode){
         if($exitcode != 0) {
                 nagios_exit('Error running whois: '.implode('\n', $execout), STATUS_UNKNOWN);
         }
+}
+function whois_jprs_jp($domain,$whois_server){
+        $ret = "";
+        $cmd = 'whois '.$domain.'/e '. $whois_server .' | grep -i \'\[State\] \'';
+        exec($cmd, $execout, $exitcode);
+        check_execwhois($exitcode);
+        debug_logging($execout);
+
+        //
         $outputarray=explode("]",$execout[0]);
         $statusarray=explode("(",$outputarray[1]);
         $status=str_replace(" ","", $statusarray[0]);
         $expire=str_replace("/","-",str_replace(")","",str_replace("(","",$statusarray[1])));
+        //
 
         $date = trim($expire);
         $ret = format_dates($date,$format='mdy');
@@ -146,11 +157,13 @@ function whois_ripn_net($domain,$whois_server){
         $ret = "";
         $cmd = 'whois '.$domain.' '. $whois_server .' | grep -i \'free-date\'';
         exec($cmd, $execout, $exitcode);
-        if($exitcode != 0) {
-                nagios_exit('Error running whois: '.implode('\n', $execout), STATUS_UNKNOWN);
-        }
+        check_execwhois($exitcode);
+        debug_logging($execout);
+
+        //
         $outputarray=explode(":",$execout[0]);
         $expire=str_replace(".","-",str_replace(")","",str_replace("(","",str_replace(" ","", $outputarray[1]))));
+        //
 
         $date = trim($expire);
         $ret = format_dates($date,$format='mdy');
@@ -160,17 +173,18 @@ function whois_default($domain,$whois_server){
         $ret = "";
         $cmd = 'whois '.$domain.' '. $whois_server .' | grep -i \'expir\|renew\|paid-till\'';
         exec($cmd, $execout, $exitcode);
-        if($exitcode != 0) {
-                nagios_exit('Error running whois: '.implode('\n', $execout), STATUS_UNKNOWN);
-        }
+        check_execwhois($exitcode);
+        debug_logging($execout);
 
-        //main plugin functionality
+        //
         $raw_date = $execout[0];
         $offset = strpos($raw_date, ":")+1;
         if ($offset !== false) {
                 $date = trim(substr($raw_date, $offset));
                 $ret = format_dates($date,$format='mdy');
         }
+        //
+
         return $ret;
 }
 function check_domain($options) {
@@ -196,6 +210,8 @@ function check_domain($options) {
                         $pdate = whois_default($domain,$whois_server);
                         break;
         }
+
+        debug_logging($pdate);
 
         $expire_seconds = strtotime($pdate);
         $expire_date = $pdate;
@@ -245,9 +261,20 @@ function get_date($date, $format) {
                 return date('Y-m-d', strtotime($date));
         }
 
-        $months = array( 'jan'=>1,  'ene'=>1,  'feb'=>2,  'mar'=>3, 'apr'=>4, 'abr'=>4,
-                         'may'=>5,  'jun'=>6,  'jul'=>7,  'aug'=>8, 'ago'=>8, 'sep'=>9,
-                         'oct'=>10, 'nov'=>11, 'dec'=>12, 'dic'=>12 );
+        $months = array('jan'=>1, 'ene'=>1,
+                        'feb'=>2,
+                        'mar'=>3,
+                        'apr'=>4, 'abr'=>4,
+                        'may'=>5,
+                        'jun'=>6,
+                        'jul'=>7,
+                        'aug'=>8,
+                        'ago'=>8,
+                        'sep'=>9,
+                        'oct'=>10,
+                        'nov'=>11,
+                        'dec'=>12,'dic'=>12
+                        );
 
         $parts = explode(' ',$date);
 
